@@ -1,5 +1,25 @@
 import java.util.Scanner;
+class Product implements Comparable<Product> {
+    String productName;
+    String category;
+    double price;
+    int stock;
+    int salesCount;
 
+    public Product(String name, String category, double price, int stock, int salesCount) {
+        this.productName = name;
+        this.category = category;
+        this.price = price;
+        this.stock = stock;
+        this.salesCount = salesCount;
+    }
+
+    @Override
+    public int compareTo(Product other) {
+        // Fiyata göre karşılaştırma (Insertion Sort için kullanılır)
+        return Double.compare(this.price, other.price);
+    }
+}
 public class Main {
 
     public static void insertionSortByPrice(Product[] arr) {
