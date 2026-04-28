@@ -1,0 +1,144 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+#define MAX_MEMBERS 500
+#define MAX_LINE 1024
+
+typedef struct {
+    char fullName[100];
+    char firstName[100];
+    char lastName[100];
+    double totalDays;
+} Member;
+
+// Üye isimlerini karşılaştırırken büyük/küçük harf farkını ortadan kaldırmamız gerekir
+void toLowerCase(char *dest, const char *src) {
+    int i = 0;
+    while (src[i]) {
+        dest[i] = tolower((unsigned char)src[i]);
+        i++;
+    }
+    dest[i] = '\0';
+}
+
+//Çıktı formatındaki hafta/gün ayrımını ve tekil/çoğul eklerini kontrol ederiz
+void printDuration(double days) {
+    int total = (int)days;
+    int weeks = total / 7; //kaç hafta buluyoruz
+    int remainingDays = total % 7;
+
+    if (weeks > 0) {
+        printf("%d week%s", weeks, weeks > 1 ? "s" : "");
+        if (remainingDays > 0) printf(" ");
+    }
+    if (remainingDays > 0) {
+        printf("%d day%s", remainingDays, remainingDays > 1 ? "s" : "");
+    }
+    printf("\n");
+}
+
+int main() {
+    char fileName[100];
+    char sortOption[10];
+    Member members[MAX_MEMBERS]; 
+    int memberCount = 0;
+
+    printf("Enter the input file name: \n");
+    scanf("%s", fileName);
+    printf("Sort the results? (yes/no): \n");
+    scanf("%s", sortOption);
+
+    FILE *fp = fopen(fileName, "r");
+    if (fp == NULL) {
+        printf("File could not be opened.\n");
+        return 1;
+    }
+
+    char line[MAX_LINE]; 
+    fgets(line, MAX_LINE, fp); 
+
+    while (fgets(line, MAX_LINE, fp)) {
+        char *token;
+        char *temperatureLine = strdup(line);
+        
+        strtok(temperatureLine, ",");     // BorrowDate 
+        strtok(NULL, ",");         // ReturnDate 
+        token = strtok(NULL, ","); // Days 
+        
+        if (token == NULL) {
+            free(temperatureLine);
+            continue;
+        }
+        
+        double currentDays = atof(token);
+        char *memberName = strtok(NULL, ","); // MemberName 
+        
+        if (memberName == NULL) {
+            free(temperatureLine);
+            continue;
+        }
+
+        // Üye daha önce listeye eklendi mi kontrolü yapıyoruz
+        int found = -1;
+        char lowerNew[100], lowerExisting[100];
+        toLowerCase(lowerNew, memberName);
+
+        for (int i = 0; i < memberCount; i++) {
+            toLowerCase(lowerExisting, members[i].fullName);
+            if (strcmp(lowerNew, lowerExisting) == 0) {
+                found = i;
+                break;
+            }
+        }
+
+        if (found != -1) {
+            members[found].totalDays += currentDays; // Mevcut üyenin gün sayısını topluyoruz
+        } else {
+            // Yeni üyeyi kaydediyoruz
+            strcpy(members[memberCount].fullName, memberName);
+            members[memberCount].totalDays = currentDays;
+
+            char temperatureName[100];
+            strcpy(temperatureName, memberName);
+            char *lastSpace = strrchr(temperatureName, ' '); // Sondaki kelime soyadıdır
+            
+            if (lastSpace) {
+                strcpy(members[memberCount].lastName, lastSpace + 1);
+                *lastSpace = '\0';
+                strcpy(members[memberCount].firstName, temperatureName);
+            } else {
+                strcpy(members[memberCount].lastName, temperatureName);
+                strcpy(members[memberCount].firstName, "");
+            }
+            memberCount++;
+        }
+        free(temperatureLine);
+    }
+    fclose(fp);
+
+    // Alfabetik sıralama (Surname ve Name'e göre)
+   if (strcmp(sortOption, "yes") == 0) {
+        for (int i = 0; i < memberCount - 1; i++) {
+            for (int j = 0; j < memberCount - i - 1; j++) {
+                int resLastName = strcasecmp(members[j].lastName, members[j+1].lastName);
+                
+                // Soyadları farklıysa soyadına göre sıralıyoruz
+                // Soyadları aynıysa isme (firstName) göre sıralıyoruz
+                if (resLastName > 0 || (resLastName == 0 && strcasecmp(members[j].firstName, members[j+1].firstName) > 0)) {
+                    Member temp = members[j];
+                    members[j] = members[j+1];
+                    members[j+1] = temp;
+                }
+            }
+        }
+    }
+    // Son raporu yazdırıyoruz
+    for (int i = 0; i < memberCount; i++) {
+        printf("%s %s %.2f ", members[i].lastName, members[i].firstName, members[i].totalDays);
+        printDuration(members[i].totalDays); // Hafta ve gün formatı
+    }
+
+    return 0;
+}
